@@ -1,0 +1,211 @@
+---
+title: "1_TwitterScrape"
+author: "Ursula Widocki and Katherine Cyr"
+date: "12/13/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# I. Overview and Motivation:
+
+#### Historical Context: 
+
+Trump impeachment hearings, Trump allegedly withheld US aid to Ukraine unless president of Ukraine investigated Joe Biden's son (so we expect many Tweets related to Joe Biden & impeachment inquiry) [https://www.npr.org/2019/10/28/771287237/trump-impeachment-inquiry-a-guide-to-key-people-facts-and-documents]
+Joe Biden and Elizabeth Warren previously top candidates in Iowa polls, recently surpassed by Pete Buttigeg [https://www.nytimes.com/2019/11/16/us/politics/iowa-poll-democrats.html]
+
+#### Debate info:
+
+hosted on 11/20/2019 at 8pm EST 
+held in Atlanta, GA
+hosted by MSNBC
+all female journalists moderating the debate: Andrea Mitchell, Rachel Maddow, Kristen Welker & Ashley Parker
+
+#### Candidate profiles:
+
+Former Vice President Joe Biden
+Sen. Cory Booker (New Jersey)
+Mayor Pete Buttigieg (South Bend, Indiana)
+Rep. Tulsi Gabbard (Hawaii)
+Sen. Kamala Harris (California)
+Sen. Amy Klobuchar (Minnesota)
+Sen. Bernie Sanders (Vermont)
+Billionaire Tom Steyer
+Sen. Elizabeth Warren (Massachusetts)
+Entrepreneur Andrew Yang
+
+# II. Related Work:
+
+FiveThirtyEight: Nate Silver of FiveThirtyEight gained much attention when he aggregated many political polls and gained more accurate insight than any of the polls individually. Now, FiveThrityEight is a webiste that focuses on using statistical analysis (hard numbers) to tell compelling stories about elections, politics, sports, science, economicsand sports blogging.
+
+FiveThirtyEight inspired us to analyze the Democratic Party Primary Presidential Debate in a creative way using Twitter data, Google Trends data, and the debate transcript to explore performance in the president race to win the primaries.
+
+# III. Initial Questions: 
+
+Assessing debate performance using Twitter reactions
+Approximate time stamps on debate transcript 
+Calculate length of debate (we expect two hours, account for commercials)
+Words have same time unit
+Map tweets to time stamps
+Calculate and plot frequency for each candidate
+Map points on frequency plot to debate transcript timestamp and word cloud of tweets
+Explore connectivity and frequency of hashtags
+
+# IV. Data:
+
+Data collection:
+ 
+source: Twitter, debate transcript
+scraping method
+cleanup
+Important R packages:
+Wordcloud
+Igraph (if we do network analysis)
+StringR
+TwitteR
+GGplot2
+Dplyr 
+networkD3
+
+# Notes and Conclusion
+
+There are many Trump mentions in the data, so Twitter’s reaction to the debate may not be representative of Democratic voters’ reaction to the debate. 
+Computational issues: the way tweets were scraped may cause the sample to not be representative of the population
+
+----------------------------------------------------------------------------------------------------------------
+
+The following code was run in an R script to scrape tweets from Twitter. It is put into chunks to make it easier to read and follow but commented out so that this file can be knit
+
+```{r, include = FALSE}
+# packages to import
+#library(twitteR)
+#library(httr)
+#library(ROAuth)
+#library(igraph)
+#library(stringr)
+#library(dplyr)
+
+```
+
+In order to scrape data from Twitter, we used Kat's Twitter developer account to access the tweets. The following allows her to log in to access the data:
+
+```{r, include= FALSE}
+# Assuming that we've gotten our authentication information, we can now build up our login credentials
+#consumerKey <- "O9A3bI2SrkQo5yiiYUfeSMgkh"
+#consumerSecret <- "azUjtLKk10PJuyXmZ1sG46YzqExbmiM0qrH1TzhfgYYf8ws6kQ"
+#ccessToken<-  "986734525723152384-xboQG77963FV0QDnWsWs97kYfDDfzbI"
+#accessSecret<- "eaRkDtsBou43VjMbqIsFSmcCxKPWSwdbODrkbYfPQVnmo"
+
+#reqURL <- "https://api.twitter.com/oauth/request_token"
+#accessURL <- "https://api.twitter.com/oauth/access_token"
+#authURL <- "https://api.twitter.com/oauth/authorize"
+
+# We put them into one piece that will log us in
+#twitCred <- OAuthFactory$new(consumerKey=consumerKey, consumerSecret=consumerSecret, requestURL=reqURL, #accessURL=accessURL, authURL=authURL)
+
+# But now we need to do something called a handshake to comlplete the login process
+#twitCred$handshake()
+# Now follow your browser until you get to a large number and paste it where it asks for it in the console
+
+# Let's save this so we don't have to redo it all the time for different R scripts
+#save(twitCred, file="credentials.RData")
+
+
+
+
+# So now let's log in
+## To do so, we're going to need to go find something another
+#setup_twitter_oauth("O9A3bI2SrkQo5yiiYUfeSMgkh",
+                    #"azUjtLKk10PJuyXmZ1sG46YzqExbmiM0qrH1TzhfgYYf8ws6kQ",
+                    #"986734525723152384-xboQG77963FV0QDnWsWs97kYfDDfzbI",
+                    #"eaRkDtsBou43VjMbqIsFSmcCxKPWSwdbODrkbYfPQVnmo")
+
+
+```
+
+The next chunk has lines we used to run in order to collect tweets during the debate
+
+```{r, include= FALSE}
+#tweetList <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=1000)
+
+#tweetList1 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=1000)
+
+#tweetList2 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=1000)
+
+#tweetList3 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=1000)
+
+#tweetList4 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000)
+
+#tweetList5<- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000)
+
+#tweetList6 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000)
+
+#tweetList7 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000)
+
+#tweetList8 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000)
+
+#tweetList9 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000)
+
+#tweetList10 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000)
+
+#tweetList11 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000)
+
+#tweetList12 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000)
+
+#tweetList13 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000)
+
+#tweetList14 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000)
+
+#tweetList16 <- searchTwitteR(" \"#DemDebate\" OR \"#JoeBiden\" OR \"#JoeBiden2020\" OR  \"#PeteButtigieg\" OR \"#PeteForPresident\" OR \"#ElizabethWarren\"  OR \"#Warren2020\" OR \"#BernieSanders\" OR \"#Bernie2020\" ", n=10000, since = "2019-11-21")
+```
+
+The data were converted into data frames and saved as CSVs
+
+```{r, include = FALSE}
+#tweetDF <- twListToDF(tweetList)
+#tweetDF1 <- twListToDF(tweetList1)
+#tweetDF2 <- twListToDF(tweetList2)
+#tweetDF3 <- twListToDF(tweetList3)
+#tweetDF4 <- twListToDF(tweetList4)
+#tweetDF5 <- twListToDF(tweetList5)
+#tweetDF6 <- twListToDF(tweetList6)
+#tweetDF7 <- twListToDF(tweetList7)
+#tweetDF8 <- twListToDF(tweetList8)
+#tweetDF9 <- twListToDF(tweetList9)
+#tweetDF10 <- twListToDF(tweetList10)
+#tweetDF11 <- twListToDF(tweetList11)
+#tweetDF12 <- twListToDF(tweetList12)
+#tweetDF13 <- twListToDF(tweetList13)
+#tweetDF14 <- twListToDF(tweetList14)
+#tweetDF16 <- twListToDF(tweetList16)
+
+#write.csv(tweetDF1, "tweetDF1.csv")
+#write.csv(tweetDF2, "tweetDF2.csv")
+#write.csv(tweetDF3, "tweetDF3.csv")
+#write.csv(tweetDF4, "tweetDF4.csv")
+#write.csv(tweetDF5, "tweetDF5.csv")
+#write.csv(tweetDF6, "tweetDF6.csv")
+#write.csv(tweetDF7, "tweetDF7.csv")
+#write.csv(tweetDF8, "tweetDF8.csv")
+#write.csv(tweetDF9, "tweetDF9.csv")
+#write.csv(tweetDF10, "tweetDF10.csv")
+#write.csv(tweetDF11, "tweetDF11.csv")
+#write.csv(tweetDF12, "tweetDF12.csv")
+#write.csv(tweetDF13, "tweetDF13.csv")
+#write.csv(tweetDF14, "tweetDF14.csv")
+#write.csv(tweetDF16, "tweetDF16.csv")
+#write.csv(tweetDF, "tweetDF_0.csv")
+```
+
+
+
+
+
+
+
+
+
+
+
