@@ -69,10 +69,10 @@ GGplot2
 Dplyr 
 networkD3
 
-# Notes and Conclusion
+# Notes
 
 There are many Trump mentions in the data, so Twitter’s reaction to the debate may not be representative of Democratic voters’ reaction to the debate. 
-Computational issues: the way tweets were scraped may cause the sample to not be representative of the population
+Computational issues: the way tweets were scraped may cause the sample to not be representative of the populations
 
 ----------------------------------------------------------------------------------------------------------------
 
@@ -93,14 +93,16 @@ In order to scrape data from Twitter, we used Kat's Twitter developer account to
 
 ```{r, include= FALSE}
 # Assuming that we've gotten our authentication information, we can now build up our login credentials
-#consumerKey <- "O9A3bI2SrkQo5yiiYUfeSMgkh"
-#consumerSecret <- "azUjtLKk10PJuyXmZ1sG46YzqExbmiM0qrH1TzhfgYYf8ws6kQ"
-#ccessToken<-  "986734525723152384-xboQG77963FV0QDnWsWs97kYfDDfzbI"
-#accessSecret<- "eaRkDtsBou43VjMbqIsFSmcCxKPWSwdbODrkbYfPQVnmo"
+# personal login information has been omitted
 
-#reqURL <- "https://api.twitter.com/oauth/request_token"
-#accessURL <- "https://api.twitter.com/oauth/access_token"
-#authURL <- "https://api.twitter.com/oauth/authorize"
+#consumerKey <- ""
+#consumerSecret <- ""
+#ccessToken<-  ""
+#accessSecret<- ""
+
+#reqURL <- ""
+#accessURL <- ""
+#authURL <- ""
 
 # We put them into one piece that will log us in
 #twitCred <- OAuthFactory$new(consumerKey=consumerKey, consumerSecret=consumerSecret, requestURL=reqURL, #accessURL=accessURL, authURL=authURL)
@@ -117,10 +119,10 @@ In order to scrape data from Twitter, we used Kat's Twitter developer account to
 
 # So now let's log in
 ## To do so, we're going to need to go find something another
-#setup_twitter_oauth("O9A3bI2SrkQo5yiiYUfeSMgkh",
-                    #"azUjtLKk10PJuyXmZ1sG46YzqExbmiM0qrH1TzhfgYYf8ws6kQ",
-                    #"986734525723152384-xboQG77963FV0QDnWsWs97kYfDDfzbI",
-                    #"eaRkDtsBou43VjMbqIsFSmcCxKPWSwdbODrkbYfPQVnmo")
+#setup_twitter_oauth("",
+                    #"",
+                    #"",
+                    #"")
 
 
 ```
