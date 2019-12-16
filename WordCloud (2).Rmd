@@ -1,0 +1,140 @@
+---
+title: "WordCloud"
+author: "Kat Cyr"
+date: "December 12, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+library(plyr)
+library(dplyr)
+library(stringr)
+library(lubridate)
+```
+
+This word cloud analysis is pretty straightfoward: we prepared the data and then applied the wordcloud function.
+
+1. Data Prep: 
+
+The data was subsetted so that the moderator's text would not be included in the word cloud analysis. The twitter data was mapped to timestamps - this is necessary for creating the slider in the shiny app. 
+
+```{r}
+## read in
+library(readr)
+df2 <- read_csv("df2.csv")
+tweetDF <- read_csv("tweetDF.csv")
+dis <- read_csv("dis.csv")
+
+
+transcript<- df2[,c(2,3)]
+candidates <- c("WARREN", "KLOBUCHAR", "SANDERS", "BIDEN", "YANG", "BUTTIGIEG", "HARRIS", "BOOKER", "GABBARD", "STEYER")
+transcript <- transcript %>% filter(name %in%  candidates)
+
+
+### round date to nearest minute
+
+tweetDF$created <- round_date(tweetDF$created, "minute")
+tweetDF$created <- as.character(tweetDF$created) ## easier to work with as a character
+
+
+### then map to timestamps
+tweetDF$timestamp <- mapvalues(tweetDF$created, 
+          from= as.character(dis$tcreated), 
+          to= dis$timestamp)
+
+### removes characters and other common pesky characters found in Twitter data
+
+tweetDF$text = gsub("&amp", "", tweetDF$text)
+tweetDF$text = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", tweetDF$text)
+tweetDF$text = gsub("@\\w+", "", tweetDF$text)
+tweetDF$text = gsub("[[:punct:]]", "", tweetDF$text)
+tweetDF$text = gsub("[[:digit:]]", "", tweetDF$text)
+tweetDF$text = gsub("http\\w+", "", tweetDF$text)
+tweetDF$text = gsub("[ \t]{2,}", "", tweetDF$text)
+tweetDF$text = gsub("^\\s+|\\s+$", "", tweetDF$text) 
+
+tweets <- tweetDF[,c("text", "timestamp")] 
+tweets$timestamp <- as.numeric(tweets$timestamp)
+tweets$timestamp <- unlist(tweets$timestamp)
+
+
+Encoding(tweets$text) <- "UTF-8"
+tweets$text <- iconv(tweets$text, "UTF-8", "UTF-8",sub='') ## remove any non UTF-8
+
+```
+
+This next chunk creates a list of dataframes to be fed to the word cloud shiny app. The twitter data will be subsetted by each time stamp and each subset will be prepared for the word cloud function and then stored in a list called "lst." This was crucial for animating the slider bar in the shiny app because it decreased processing time for generating the word cloud.
+
+```{r}
+n <- 35
+lst <- replicate(n,data.frame(y=character(), x=numeric(), stringsAsFactors=FALSE), simplify=FALSE) ## create the list of dataframes
+
+for(i in 1:35){
+tweet_sub <- tweets %>% filter(timestamp == 1)
+tdf <- tweet_sub$text
+### create a corpus of tweets
+docs <- VCorpus(VectorSource(tdf))
+
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+docs <- tm_map(docs, content_transformer(tolower))
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# Remove demdebate and democratic debate because they have the highest frequency
+# just was removed because I think it's a stop word and I don't want it in my word cloud
+docs <- tm_map(docs, removeWords, c("demdebate", "democraticdebate", "just")) 
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+## necessary format for the word cloud function
+dtm <- TermDocumentMatrix(docs) 
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+## storinf in lst to be used in the shiny app
+d <- d[c(1:35),]
+lst[[1]] <- d
+}
+
+```
+
+This is the same procedure as above but for the debate transcript data. 
+```{r}
+n <- 10
+lst_t <- replicate(n,data.frame(y=character(), x=numeric(),
+                     stringsAsFactors=FALSE), simplify=FALSE)
+for(i in 1:10){
+  
+transcript_sub <- transcript %>% filter(name == candidates[i])
+
+tdf <- transcript_sub$text
+
+docs <- VCorpus(VectorSource(tdf))
+
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+docs <- tm_map(docs, content_transformer(tolower))
+#docs <- tm_map(docs, removeWords, stopwords) 
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# Remove your own stop word
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("demdebate", "democraticdebate", "just")) 
+
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+d <- d[c(1:35),]
+lst_t[[i]] <- d
+}
+```
+
