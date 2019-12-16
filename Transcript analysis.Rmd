@@ -1,0 +1,321 @@
+---
+title: "Transcript analysis"
+author: "Kat Cyr"
+date: "November 23, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+library(stringr)
+library(tidyr)
+library(plyr)
+library(formattable)
+library(data.table)
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+library(lubridate)
+transcript <- read_excel("transcript.xlsx")
+```
+
+Everything about cleaning this transcript data was a nightmare. The following two chunks of code is fixing the transcript data so that the names of the person talking is in column 1 and the corresponding row in column 2 is their text. 
+
+```{r}
+colnames(transcript) <- "col1"
+
+transcript <- as.data.frame(str_split_fixed(transcript$col1, ":", 2), stringsAsFactors = FALSE)
+
+debate_names <- c("WARREN", "KLOBUCHAR", "SANDERS", "BIDEN", "YANG", "BUTTIGIEG", "HARRIS", "MITCHELL", "BOOKER", "WELKER",  "PARKER", "GABBARD", "STEYER", "MADDOW")
+
+count <- 0
+
+for(i in 1:564){
+  if(transcript[i,1] %in% debate_names){
+    count <- count + 1
+  }
+
+}
+
+
+name <- c("MADDOW")
+index <- 1
+rep_list <- as.vector(0)
+
+
+for(i in 2:564){
+  if(transcript[i,1] %in% debate_names){
+    index <- index + 1
+    name[index] <- transcript[i,1]
+    if(name[index -1] == name[index]){
+      print(i)
+    }
+  }
+}
+
+### locates rows 134, 233, 338, 443
+name <- as.data.frame(name)
+
+for(i in 1:286){
+ if(name[i,1] == name[i+1,1]){
+     print(i)
+   }
+}
+
+
+```
+
+More cleaning required because we have some names that are repeated in the name column. This is likely due to a speaker being interrupted by the audience (applauce, laughter, cheering, etc.). Correcting for this was an ugly process.
+
+```{r}
+df2 <- name
+df2 <- df2 %>% mutate(text = "")
+
+###### Ok, so the problem is that we have a few rows where the speaker is repeated. For example, row 132 is "KLOBUCHAR" and then 134 is also "KLOBUCHAR". 
+
+index1 <- "MADDOW"
+index <- 1
+
+for(i in 1:133){
+  for(j in 1:2){
+  if((!(transcript[i,j] %in% debate_names)) & index1 != transcript[i,j]){ 
+    if(transcript[i,j] != ""){
+    df2[index,2] <- paste(df2[index,2], transcript[i,j], sep = " ") 
+    }
+  }
+  if(transcript[i,j] %in% debate_names & index1 != transcript[i,j]){
+    index <- index + 1
+    index1 <- df2[index,1]
+  }
+  }
+}
+
+### we can see that index ends at 70, so we know this is the row we want to paste to
+
+df2[71,2] <- transcript[134,2]
+
+### skip row 71
+
+index <- 72
+index1 <- "PARKER"
+
+for(i in 135:232){
+  for(j in 1:2){
+  if((!(transcript[i,j] %in% debate_names)) & index1 != transcript[i,j]){ 
+    if(transcript[i,j] != ""){
+    df2[index,2] <- paste(df2[index,2], transcript[i,j], sep = " ") 
+    }
+  }
+  if(transcript[i,j] %in% debate_names & index1 != transcript[i,j]){
+    index <- index + 1
+    index1 <- df2[index,1]
+  }
+  }
+}
+
+### next repeat is Maddow announcing a commercial break and then announcing the returm from the break. It's easier to manually input
+
+df2[118, 2] <- transcript[233, 2]
+
+
+
+### ok now the next repeat is Welker at 337
+index <- 119
+index1 <- "BUTTIGIEG"
+
+for(i in 234:337){
+  for(j in 1:2){
+  if((!(transcript[i,j] %in% debate_names)) & index1 != transcript[i,j]){ 
+    if(transcript[i,j] != ""){
+    df2[index,2] <- paste(df2[index,2], transcript[i,j], sep = " ") 
+    }
+  }
+  if(transcript[i,j] %in% debate_names & index1 != transcript[i,j]){
+    index <- index + 1
+    index1 <- df2[index,1]
+  }
+  }
+}
+
+df2[171,2] <- transcript[338,2]
+
+### another repeat at Klobuchar
+
+index <- 172
+index1 <- "GABBAR"
+
+for(i in 339:442){
+  for(j in 1:2){
+  if((!(transcript[i,j] %in% debate_names)) & index1 != transcript[i,j]){ 
+    if(transcript[i,j] != ""){
+    df2[index,2] <- paste(df2[index,2], transcript[i,j], sep = " ") 
+    
+    }
+  }
+  if(transcript[i,j] %in% debate_names & index1 != transcript[i,j]){
+    index <- index + 1
+    index1 <- df2[index,1]
+  }
+  }
+}
+
+index <- 221
+index1 <- "KLOBUCHAR"
+
+for(i in 443:564){
+  for(j in 1:2){
+  if((!(transcript[i,j] %in% debate_names)) & index1 != transcript[i,j]){ 
+    if(transcript[i,j] != ""){
+    df2[index,2] <- paste(df2[index,2], transcript[i,j], sep = " ") 
+    }
+  }
+  if(transcript[i,j] %in% debate_names & index1 != transcript[i,j]){
+    index <- index + 1
+    index1 <- df2[index,1]
+  }
+  }
+}
+
+```
+
+
+Now, after all that work, it's time to approximate the timestamps for the transcript. We tracked time when the debate started, left for break, returned from break and when the debate finished. Here are the timestamps:
+
+0 minutes:  the debate started
+53 minutes: left for first commercial break
+58 minutes: returned from first commercial break
+84 minutes: left for second commercial break
+88 minutes: returned from second commercial break
+100 minutes: left for third commercial break
+104 mimuntes: returned from third commercial break
+136 minutes: debate ended
+
+This adds up to about an two hours and 16 minutes. After inspecing the data, we found the breaks began at rows 117, 170 and 201. We approximated the timestamps using character length of the text column; we assume that each character takes the same amount of time to say. For example, if there were 60 words spoken in 60 minutes, we would assume each word takes one minute. We didn't end up using this in our analysis which is tragic because I thought it was clever and it took a really long time. 
+
+NOTE: this ultimately was not used for the analysis because the start and end times of when each candidate spoke did not align with our other timestamps (the tweets). This is tragic because preparing the data in this way took a lot of work and creativity. If I had more time, I'd love to go back and try to integrate this work into the analysis so that users could click on the twitter trends and see where it corresponds to the debate transcrpt. 
+```{r}
+library(lubridate)
+
+df2 <- df2 %>% mutate(num_words = 0)
+df2 <- df2 %>% mutate(time = 0)
+
+for(i in 1:287){
+  df2[i,3] <- nchar(df2[i,2]) 
+}
+
+summary(df2$num_words)
+```
+
+Sum the time at each period (between commercial breaks).
+```{r}
+first_break <- df2[c(1:117),]
+first_break <- sum(first_break$num_words)
+
+second_break <- df2[c(118:170),]
+second_break <- sum(second_break$num_words)
+
+
+third_break <- df2[c(171:201),]
+third_break <- sum(third_break$num_words)
+
+last_quarter <- df2[c(202:287),]
+last_quarter <- sum(last_quarter$num_words)
+
+```
+
+
+Scale the number of words 
+```{r}
+for(i in 1:117){
+    df2[i,4] <- df2[i,3]/first_break*(53) 
+}
+
+for(i in 117:170){
+    df2[i,4] <- df2[i,3]/second_break*((84-58)) 
+  }
+
+for(i in 171:201){
+  df2[i,4] <- df2[i,3]/third_break*((100-88))
+}
+
+for(i in 172:287){
+  df2[i,4] <- df2[i,3]/last_quarter*((32))
+}
+
+```
+
+
+
+
+```{r}
+df2 <- df2 %>% mutate(time1 = 0)
+
+t= df2[1,4]
+df2[1,5] <- t
+for(i in 2:287){
+  if(i == 118){
+    t <- t +4
+  }
+  if(i == 171){
+    t <- t + 4
+  }
+  if(i == 202){
+    t <- t + 4
+  }
+  t = t + df2[i,4]
+  df2[i,5] <- t
+}
+
+df2$time1<- trunc(df2$time1)
+df2 <- df2 %>% mutate(hours = 2)
+df2 <- df2 %>% mutate(minutes = 59)
+df2 <- df2 %>% mutate(timestamp1 = 0)
+df2 <- df2 %>% mutate(t2 = 0)
+
+df2$hours <- 1
+df2$minutes <- 59
+df2$timestamp <- 0
+
+for(i in 1:287){
+  df2[i,7] <- df2[i,5] + 59
+  if(df2[i,7] >= 120){
+    df2[i,6] <- 3
+    df2[i,7] <- df2[i,7] - 120
+  }
+  if(df2[i,7] >= 60 & df2[i,7] <= 120){
+    df2[i,6] <- df2[i,6] + 1
+    df2[i,7] <- df2[i,7] - 60
+  }
+  df2[i,8] <- "2019-11-21"
+  df2[i,8] <- paste(as.character(df2[i,8]), df2[i,6], sep = " 0")
+  if(df2[i,7] < 10){
+   df2[i,8] <- paste(as.character(df2[i,8]), df2[i,7], sep = ":0") 
+  }
+  else{
+    df2[i,8] <- paste(as.character(df2[i,8]), df2[i,7], sep = ":")
+  }
+  
+  }
+
+df2[1,9] <- df2[1, 8]
+
+for(i in 2:287){
+   #### now fill in timestamp2
+  df2[i,9] <- df2[i-1, 8]
+}
+
+df2$timestamp1 <- as_datetime(df2$timestamp1, format='%Y-%m-%d %H:%M')
+df2$t2 <- as_datetime(df2$t2, format='%Y-%m-%d %H:%M')
+df2$t2 <- as.character(df2$t2)
+df2$timestamp1 <- as.character(df2$timestamp1)
+```
+
+Export as CSV
+```{r}
+write.csv(file="df2.csv", x=df2)
+```
+

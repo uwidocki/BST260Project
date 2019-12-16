@@ -1,0 +1,159 @@
+---
+title: "Twitter Trends"
+author: "Kat Cyr"
+date: "November 26, 2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(lubridate)
+library(ggplot2)
+library(reshape2)
+library(readxl)
+library(readr)
+```
+
+This file reads in the subsetted Twitter data. We used a subset function in Excel for each top candidate (and Trump). We decided to include Trump in this analysis since he was mentioned many times during the debate and because of the impeachment inquiry hearings that took place earlier in the day.
+
+
+```{r}
+### import Biden mentions
+BidenMentions <- read_excel("BidenMentions.xlsx", col_names = FALSE)
+
+### import Sanders mentions
+SandersMentions <- read_excel("SandersMentions.xlsx", col_names = FALSE)
+
+### import Warren mentions
+WarrenMentions <- read_excel("WarrenMentions.xlsx", 
+    col_names = FALSE)
+
+### import Buttigieg mentions
+ButtigiegMentions <- read_excel("ButtigiegMentions.xlsx", 
+    col_names = FALSE)
+
+### import Trump mentions
+
+TrumpMentions <- read_excel("TrumpMentions.xlsx", 
+    col_names = FALSE)
+ 
+### import Twitter data
+tweetDF <- read_csv("tweetDF.csv")
+
+tweetDF <- tweetDF[,-c(1,2)]
+```
+
+Mentions datasets are subsets of twitterDF subsetted by key words and duplicates must be removed. For example, Pete Buttigieg's mentions were found by searching for "Pete" or "Buttigieg" so duplicates (tweets containg "Pete" AND "Buttigieg") must be removed. We also need to bin the time data by the minute.
+
+```{r}
+biden <- BidenMentions[,-c(1,2)]
+colnames(biden) <- colnames(tweetDF)
+biden <- biden %>% distinct() 
+biden <- biden %>% mutate(tcreated = round_date(created, "minute"))
+
+
+bernie <- SandersMentions[,-c(1,2)]
+colnames(bernie) <- colnames(tweetDF)
+bernie <- bernie %>% distinct()
+bernie <- bernie %>% mutate(tcreated = round_date(created, "minute"))
+
+
+pete <- ButtigiegMentions[,-c(1,2)]
+colnames(pete) <- colnames(tweetDF)
+pete <- pete %>% distinct()
+pete <- pete %>% mutate(tcreated = round_date(created, "minute"))
+
+
+warren <- WarrenMentions[,-c(1,2)]
+colnames(warren) <- colnames(tweetDF)
+warren <- warren %>% distinct()
+warren <- warren %>% mutate(tcreated = round_date(created, "minute"))
+
+
+trump <- TrumpMentions[,-c(1,2)]
+colnames(trump) <- colnames(tweetDF)
+trump <- trump %>% distinct()
+trump <- trump %>% mutate(tcreated = round_date(created, "minute"))
+
+```
+
+Now we can calculate our trends!
+
+```{r}
+### count number of tweets at each time 
+
+trump_trends <- trump %>% group_by(tcreated) %>% tally()
+colnames(trump_trends) <- c("tcreated", "trump_count")
+
+warren_trends <- warren %>% group_by(tcreated) %>% tally()
+colnames(warren_trends) <- c("tcreated", "warren_count")
+
+bernie_trends <- bernie %>% group_by(tcreated) %>% tally()
+colnames(bernie_trends) <- c("tcreated", "bernie_count")
+
+biden_trends <- biden %>% group_by(tcreated) %>% tally()
+colnames(biden_trends) <- c("tcreated", "biden_count")
+
+pete_trends <- pete %>% group_by(tcreated) %>% tally()
+colnames(pete_trends) <- c("tcreated", "pete_count")
+
+### tcreated appears to be the same for each dataframe, but let's confirm 
+
+identical(trump_trends$tcreated, warren_trends$tcreated)
+identical(warren_trends$tcreated, bernie_trends$tcreated)
+identical(bernie_trends$tcreated, biden_trends$tcreated)
+identical(biden_trends$tcreated, pete_trends$tcreated)
+
+### combine the trend data to make graphing easier
+
+df <- cbind(trump_trends, warren_trends$warren_count, bernie_trends$bernie_count, biden_trends$biden_count, pete_trends$pete_count)
+colnames(df) <- c("tcreated", "Donald Trump", "Elizabeth Warren", "Bernie Sanders", "Joe Biden", "Pete Buttigieg")
+
+```
+
+Step 2: Calculate and graph trends
+
+```{r}
+df <- df %>% mutate(max = apply(X=df[,-1], MARGIN=1, FUN=max)) ## this finds the max tweet count for all given timestamps
+
+### calculate the proportion of tweets for each politician at a given timestamp relative to the max number of tweets at that given timestamp
+for(i in 1:35){
+  for(j in 2:6){
+    df[i,j] <- df[i,j]/df[i,7]    
+  }
+}
+
+df <- df[,c(1:6)] ##max column is no longer needed
+
+df <- melt(df, id = "tcreated") ## reshape our data so we can graph it
+
+colnames(df) <- c("tcreated", "politician", "trend")
+
+## create timestamp data in integer format
+## this is necessary for mapping to the transcript data
+
+dis <- df %>% distinct(tcreated)
+dis <- dis %>% mutate(timestamp = 0)
+
+for(i in 1:35){
+  dis[i,2] <- i
+}
+
+## export file
+write.csv(file="dis.csv", x=dis)
+
+### this converts to EST but changes the object type (messed up our graph)
+
+#df$tcreated <- as.POSIXct(df$tcreated, format='%Y-%m-%d %H:%M', tz="GMT")
+#df$tcreated <- format(df$tcreated,tz="America/New_York")
+#df$tcreated <- format(strptime(df$tcreated, format='%Y-%m-%d %H:%M'), '%r')
+#df$tcreated <- as_date(df$tcreated)
+
+
+```
+
