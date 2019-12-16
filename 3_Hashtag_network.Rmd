@@ -1,0 +1,464 @@
+---
+title: "3_Hashtag_network"
+author: "Ursula Widocki"
+date: "11/23/2019"
+output: html_document
+---
+
+## Twitter's Reaction to the fifth 2019 Democratic Primary Debate
+
+This markdown file exhibits the pipeline for processing the data and into the network
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#rm(list = ls())
+
+library(dplyr)
+library(stringr)
+library(textclean)
+library(igraph)
+library(networkD3)
+library(MASS)
+```
+
+```{r, include = FALSE}
+tweetDF <- read.csv("tweetDF.csv")
+```
+
+#### What is a hashtag?
+
+A hastag is a word or phrase detected by the "#" symbol and is used on social media to emphasize specific topics.
+
+The hashtags we used to scrape tweets are #DemDebate, since that was the official hashtag of the event, and two  hashtags pertaining to the top four Democratic candidates: #JoeBiden, #JoeBiden2020, #PeteButtigieg, #PeteForPresident, #ElizabethWarren, #Warren2020, #BernieSanders, #Bernie2020.
+
+```{r, indlude = FALSE}
+
+hashtags <- c("#DemDebate", "#JoeBiden","#JoeBiden2020", "#PeteButtigieg", "#PeteForPresident", "#ElizabethWarren", "#Warren2020", "#BernieSanders", "#Bernie2020")
+
+tweetDF2 <- tweetDF$text
+tweetDF2 <- as.data.frame(tweetDF2)
+colnames(tweetDF2) <- c("text")
+tweetDF2 <- na.omit(tweetDF2)
+
+```
+
+We randomly sampled 10,000 tweets that have hastags to create our network
+
+```{r, include = FALSE}
+
+# prepares tweets
+tweetDF2$text <- as.character(tweetDF2$text)
+tweetDF2$text <- str_replace_all(tweetDF2$text, "[\r\n]" , "") 
+
+```
+
+```{r, include = FALSE}
+
+# The following was used to collect the the rows we sampled from
+
+#bool <- str_detect(tweetDF2$text, pattern = '#')
+#tweetsWithHashtag <- which(bool == TRUE)
+#tweet_sample_rows <- sample(tweetsWithHashtag, 10000, replace = FALSE) # chooses 10,000 random tweets
+```
+
+```{r, include = FALSE}
+#write(tweet_sample_rows, file = "tweet_sample_rows.txt")
+
+# for consistency, we used a certain set of rows from the initial sampling
+# the file was saved and read in below
+rows <- read.table("tweet_sample_rows.txt", sep = " ")
+
+
+rows1 <- as.numeric(rows[,1])
+rows2 <- as.numeric(rows[,2])
+rows3 <- as.numeric(rows[,3])
+rows4 <- as.numeric(rows[,4])
+rows5 <- as.numeric(rows[,5])
+
+
+
+
+tweet_sample_rows <- c(rows1, rows2, rows3, rows4, rows5)
+
+#sampled_tweets <- tweetDF2$text[tweet_sample_rows]
+#write(sampled_tweets, file = "sampled_tweets.txt")
+
+```
+
+We extracted all of the hashtags present in the sampled tweets
+
+```{r, include = FALSE}
+# This chunk was commented out since it takes about 2 hours to knit this
+
+# gets hashtags in the tweet sample
+#hashtags_sample <- c()
+
+#for(i in seq(1:10000)){
+  
+  #line <- tweetDF2$text[tweet_sample_rows[i]]
+  
+  #detects hashtag 
+  #if(str_detect(line, "#")){
+    
+    #indeces <- c(str_locate_all(pattern ='#', line)) # list of indeces of #
+    #ind_space <- c(str_locate_all(pattern =' ', line))
+    
+    # gets the space corresponding to the hashtag
+    #for(loc in seq(1:lengths(indeces))){
+      #h <- indeces[[1]][[loc]]
+      
+      #n = 1
+      #s = 1
+      #while(h>s & (n < lengths(ind_space))){
+        #s = ind_space[[1]][[n]]
+        #print(paste("n:", n, " vs ", lengths(ind_space)))
+        #n = n+1
+        
+      #}
+      
+      # uses h and s to extract the hashtag
+      #if(s>h){
+        #hashtag = str_sub(line, start = h, end = s-1)
+      #}else{
+        #hashtag = str_sub(line, start = h)
+      #}
+      
+      # stores that hashtag in a vector
+      #if(!(hashtag %in% hashtags_sample)){
+        #print(hashtag)
+       # hashtags_sample <- c(hashtags_sample, hashtag)
+      #}
+    #}
+  #} # if hashtag present
+#} # tweet loop
+
+```
+
+Next, we cleaned the hashtags. First, any non-ASCII detected hashtags were removed. Although foreign characters were removed, emojis were not and were difficult to detect for removal. Links were not detected as strings and could not be removed. 
+
+The hashtags were filtered by observation and removed by the following criteria: emojis, website links, punctuation, another hashtag, twitter handle.
+
+The first 100 hashtags that fit the criterion were selected
+
+```{r, include = FALSE}
+#write(hashtags_sample, file = "hashtags_sample_all.txt")
+
+
+# clean the hashtags
+# removes hashtags with non-ASCII characters
+#cleaner_hash <- hashtags_sample[which(grepl("[[:cntrl:]]",stringi::stri_enc_toascii(hashtags_sample)) == FALSE)]
+
+# trouble removing emojis
+# trouble removing links
+# trouble removing hashtags that have punctuation
+# trouble removing hashtags with other tags
+# trouble removing hashtags with @
+
+# chose the first 100 clean hashtags, above is criterion
+
+#clean <- c(1, 2, 3, 4, 6,  7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 29, 30, 32, 34, 35, 36, 38, 40, 41, 42, 44, 48, 49, 54, 55, 57, 58, 60, 64, 65, 67, 68, 69, 72, 73, 76, 77, 78, 79, 80, 81, 82, 85, 86, 87, 88, 89, 90, 91, 92, 95, 96, 97, 99, 100, 101, 102, 103, 110, 112, 114, 115, 117, 119, 121,122, 123, 124, 125, 126, 129, 130, 131, 132, 134, 136, 138, 139, 140, 141, 142, 143, 144, 145, 147, 148, 152, 153, 154, 155, 156)
+
+#clean_hashtags <- cleaner_hash[clean]
+#length(clean_hashtags)
+
+```
+
+We compute the weighted adjacency matrix. Two hashtags are connected if they appear in the same tweet. The diagonal of the matrix was used as a way of calculating the frequency of each hashtag.
+
+```{r, include = FALSE}
+# weights of hashtags from sample tweets
+
+#hash_DF <- data.frame(matrix(0L, ncol = length(clean_hashtags), nrow = length(clean_hashtags))) # weighted adjacency matrix
+#rownames(hash_DF) <- clean_hashtags
+#colnames(hash_DF) <- clean_hashtags
+
+#for(tweet in tweet_sample_rows){
+  #print(paste("Tweet number: ", which(tweet == tweet_sample_rows)))
+  
+  #line <- tweetDF2$text[tweet]
+  
+    # hashtag of row
+    #for(i in 1:(length(clean_hashtags)-1)){
+    
+      # hashtag of column
+      #for(j in i:length(clean_hashtags)){
+        
+        # if hashtag i and hashtag j are in line, increase weight of [i,j]
+        #if(str_detect(line, fixed(clean_hashtags[i])) & str_detect(line, fixed(clean_hashtags[j]))){
+          
+            #hash_DF[i,j] = hash_DF[i,j] + 1
+        #}
+       
+      #} # j loop
+    
+    #} # i loop
+    
+#} # outer loop
+
+
+```
+
+```{r, include = FALSE}
+# goes through the diagonal of the matrix and extracts the frequency of each hastag while replacing it with a zero
+#write.table(hash_DF, file = "hash_DF.txt", append = FALSE, sep = " ", dec = ".",
+            #row.names = TRUE, col.names = TRUE)
+
+hash_DF <- read.table("hash_DF.txt", header = TRUE)
+clean_hashtags <- rownames(hash_DF)
+
+hash_DF_2 <- hash_DF
+nodeWeight <- c()
+
+for(i in 1:(length(clean_hashtags))){
+  
+  nodeWeight <- c(nodeWeight, hash_DF_2[i,i])
+  
+  hash_DF_2[i,i] = 0
+  
+}
+
+```
+
+
+### Exploring the network
+
+```{r, include = FALSE}
+# creates the initial network object
+hash_DF_2_matrix <- as.matrix(hash_DF_2)
+
+write.matrix(hash_DF_2_matrix, file = "hashtag_network.txt", sep = " ")
+
+hash_net <- graph_from_adjacency_matrix(hash_DF_2_matrix, mode = "upper", weighted = T) # network object
+
+#plot(hash_net, edge.arrow.size=0.5, edge.curved=.1, vertex.label=NA, rescale = F, margin = 0.5, vertex.size = 3)
+
+```
+
+#### Looking at network metrics
+
+```{r}
+# number of nodes
+length(V(hash_net)) # 100
+
+# number of edges
+length(E(hash_net)) # 259
+
+# density of the graph
+edge_density(hash_net, loops=F) # 0.05
+
+```
+
+```{r}
+# which hashtags have the greatest frequency of occurrence
+clean_hashtags[which.max(nodeWeight)]
+clean_hashtags[order(nodeWeight, decreasing = T)[1:5]] # prints the top 5
+
+# which hashtags only occured once
+# by the way the nodeWeight vector was constructed, if a hashtag did not reoccur, then the value is 0
+zeroEdgeInd <- which(nodeWeight <= 1)
+length(clean_hashtags[zeroEdgeInd]) # 22
+
+```
+
+```{r}
+# what is the largest connected component
+diameter(hash_net, directed=F, weights=NA)
+#diameter(hash_net, directed=F) # with weights
+get_diameter(hash_net, directed=F)
+
+# plot the degree distribution
+deg <- degree(hash_net, mode="all")
+hist(deg, breaks=1:vcount(hash_net)-1, main="Histogram of node degree", density = 100, col = "blue")
+
+# top nodes by degree
+clean_hashtags[order(deg, decreasing = T)[1:5]] # prints the top 5
+
+# number of hashtags with degree 0
+length(which(deg == 0))
+```
+
+#### Interactive network
+
+```{r, include = FALSE}
+# to use network3D, we need to make the  adjaceny matrix into an edge list as a data frame
+
+sourceNode <- c()
+targetNode <- c()
+edgeWeight <- c()
+
+# loop through hash_DF_2 (upper triangule with 0 diagonal)
+
+for(i in 1:(length(hash_DF_2)-1)){
+  for(j in (i+1):length(hash_DF_2)){
+    
+    if(hash_DF_2[i,j] != 0){
+      
+      sourceNode <- c(sourceNode, clean_hashtags[i])
+      targetNode <- c(targetNode, clean_hashtags[j])
+      edgeWeight <- c(edgeWeight, hash_DF_2[i,j])
+      
+    }
+    
+  }# loops columns
+} # loops rows
+
+temp <- as.data.frame(mutate(as.data.frame(sourceNode), targetNode))
+hash_edge_DF <- as.data.frame(mutate(temp, edgeWeight))
+
+```
+
+```{r, include = FALSE}
+write.table(temp, file = "edgeList.txt", append = FALSE, sep = " ", dec = ".",
+            row.names = F, col.names = F)
+```
+
+```{r, include = FALSE}
+# visualize the network using an interactive package
+
+interactive_net <- simpleNetwork(hash_edge_DF, height="100px", width="100px",        
+        Source = 1,                 # column number of source
+        Target = 2,                 # column number of target
+        linkDistance = 5,          # distance between node. Increase this value to have more space between nodes
+        charge = -900,                # numeric value indicating either the strength of the node repulsion (negative value) or attraction (positive value)
+        fontSize = 14,               # size of the node names
+        fontFamily = "serif",       # font og node names
+        linkColour = "gray",        # colour of edges, MUST be a common colour for the whole graph
+        nodeColour = "blue",     # colour of nodes, MUST be a common colour for the whole graph "#69b3a2"
+        opacity = 0.9,              # opacity of nodes. 0=transparent. 1=no transparency
+        zoom = T                    # Can you zoom on the figure
+        )
+```
+
+This interactive network allows the user to zoom in and out of the network to better see connections between nodes. When the user brings their mouse over a node, the subnetwork of hashtags associated with the node are highlighted. The user can also drag node to analyze the network.
+
+```{r}
+interactive_net
+
+```
+
+After playing arouns with the connectivity of the hashtags, one may see that #DemDebate appears to be a central node, and form our calculations before, we see that is has the highest degree. These hashtags form one large network without any outstanding, detached networks.
+
+Looking at the hashtags connected to the names of our four target candidates, we observed some interesting relations:
+Bernie Sanders is linked to hashtags relating to universal healthcare, climate change, the status quo, and #NotMeUs.
+Elizabeth Warren is mainly connected to #DreamBigFightHard and Kamala Harris.
+Joe Biden is linked to only hashtags relating to the debate in general.
+Pete Buttigieg is connected to  hashtags mainly relating the the general debate and his candidacy for president with occasional connections to Kamala Harris and Tulsi Gabbard.
+
+This suggests that Bernie Sanders captivated his audience and spread his campaign message to the Twitter audience better than the other candidates. This also relates to Sanders frequently trending on Twitter due to out GOogle 
+
+It is important to note that there is selection bias regard #DemDebate since it was one of our target hashtags for scraping. How would our network structure change if we were to remove #DemDebate?
+
+```{r, include = FALSE}
+# create objects without #DemDebate
+
+hash_DF_rm <- hash_DF_2[-1, -1] # knowing #DemDebate is the first hashtag
+
+sourceNode2 <- c()
+targetNode2 <- c()
+edgeWeight2 <- c()
+
+# loop through hash_DF_2 (upper triangule with 0 diagonal)
+
+for(i in 1:(length(hash_DF_rm)-1)){
+  for(j in (i+1):length(hash_DF_rm)){
+    
+    if(hash_DF_rm[i,j] != 0){
+      
+      sourceNode2 <- c(sourceNode2, rownames(hash_DF_rm)[i])
+      targetNode2 <- c(targetNode2, colnames(hash_DF_rm)[j])
+      edgeWeight2 <- c(edgeWeight2, hash_DF_rm[i,j])
+      
+    }
+    
+  }# loops columns
+} # loops rows
+
+temp <- as.data.frame(mutate(as.data.frame(sourceNode2), targetNode2))
+hash_edge_DF_rm <- as.data.frame(mutate(temp, edgeWeight2))
+
+```
+
+```{r, include = FALSE}
+# visualize the network using an interactive package
+
+interactive_net_rm <- simpleNetwork(hash_edge_DF_rm, height="100px", width="100px",        
+        Source = 1,                 # column number of source
+        Target = 2,                 # column number of target
+        linkDistance = 10,          # distance between node. Increase this value to have more space between nodes
+        charge = -900,                # numeric value indicating either the strength of the node repulsion (negative value) or attraction (positive value)
+        fontSize = 14,               # size of the node names
+        fontFamily = "serif",       # font og node names
+        linkColour = "gray",        # colour of edges, MUST be a common colour for the whole graph
+        nodeColour = "blue",     # colour of nodes, MUST be a common colour for the whole graph "#69b3a2"
+        opacity = 0.9,              # opacity of nodes. 0=transparent. 1=no transparency
+        zoom = T                    # Can you zoom on the figure
+        )
+```
+
+```{r}
+interactive_net_rm
+```
+
+From the above calculations, #DemocraticDebate is the node with the next highest degree. Since this hashtag is prominent due to bias from our main topic, we expected to appear due to the nature of the other hashtags. Two detached subnetworks appear: #courage linked to #integrity and #PaidFamilyLeave linked to #childcare.
+
+Now, what would our network look like if we removed #DemocraticDebate?
+
+```{r, include = FALSE}
+# #DemocraticDebate is now in row/ column 6
+
+hash_DF_rm2 <- as.matrix(hash_DF_rm)[-3, -3] # knowing #DemDebate is the first hashtag
+hash_DF_rm2 <- as.data.frame(hash_DF_rm2)
+
+sourceNode3 <- c()
+targetNode3 <- c()
+edgeWeight3 <- c()
+
+# loop through hash_DF_2 (upper triangule with 0 diagonal)
+
+for(i in 1:(length(hash_DF_rm2)-1)){
+  for(j in (i+1):length(hash_DF_rm2)){
+    
+    if(hash_DF_rm[i,j] != 0){
+      
+      sourceNode3 <- c(sourceNode3, rownames(hash_DF_rm2)[i])
+      targetNode3 <- c(targetNode3, colnames(hash_DF_rm2)[j])
+      edgeWeight3 <- c(edgeWeight3, hash_DF_rm2[i,j])
+      
+    }
+    
+  }# loops columns
+} # loops rows
+
+temp <- as.data.frame(mutate(as.data.frame(sourceNode3), targetNode3))
+hash_edge_DF_rm2 <- as.data.frame(mutate(temp, edgeWeight3))
+
+
+```
+
+```{r, include = FALSE}
+# visualize the network using an interactive package
+
+interactive_net_rm2 <- simpleNetwork(hash_edge_DF_rm2, height="100px", width="100px",        
+        Source = 1,                 # column number of source
+        Target = 2,                 # column number of target
+        linkDistance = 10,          # distance between node. Increase this value to have more space between nodes
+        charge = -900,                # numeric value indicating either the strength of the node repulsion (negative value) or attraction (positive value)
+        fontSize = 14,               # size of the node names
+        fontFamily = "serif",       # font og node names
+        linkColour = "gray",        # colour of edges, MUST be a common colour for the whole graph
+        nodeColour = "blue",     # colour of nodes, MUST be a common colour for the whole graph "#69b3a2"
+        opacity = 0.9,              # opacity of nodes. 0=transparent. 1=no transparency
+        zoom = T         # Can you zoom on the figure
+)
+```
+
+```{r}
+interactive_net_rm2
+```
+
+YangGang was calculated to have the third greatest connectivity in the original network. This is unexpected since we did not have any target scraping hashtags pertaining to Andrew Yang and he was not a leading candidate. This suggests that he has a strong Twitter audience, despite ranking lower in the polls. It is important to note that this hashtag continued to exhibit high connectivity when modeling different samples of tweets.
+
+Overall, these networks suggest that Bernie Sanders and Andrew Yang have a strong Twitter audience compared to other candidates. Although this is not a surprising result about Sanders, it is surprising about Yang given his lesser popularity.
+
+
